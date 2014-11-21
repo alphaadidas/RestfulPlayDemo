@@ -1,0 +1,26 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+# Home page
+GET        /                    controllers.Application.index
+
+# Map static resources from the /public folder to the /assets URL path
+GET        /assets/*file        controllers.Assets.at(path="/public", file)
+
+GET         /v1/customers/:id                               @controllers.CustomerController.get(id)
+PUT         /v1/customers/:id                               @controllers.CustomerController.update(id)
+DELETE      /v1/customers/:id                               @controllers.CustomerController.delete(id)
+#GET         /v1/customers/:id/possibleDuplicates            @controllers.CustomerController.findDuplicates()
+
+POST        /v1/customers                                   @controllers.CustomerController.save()
+#GET         /v1/customers?filter=duplicatesExist            @controllers.CustomerController.find()
+
+
+#  .... etag?  if-match for :id ?   .. 400, 409 , 404 , 401, 403, 406?
+#PUT     /v1/customers/:id/merge/:id?overridefields=(a,b,c)
+#PUT     /v1/customers/:id/merge/:id1,:id2,:id3,:id4
+#PUT     /v1/customers/:id/merge #-d ' ["id1","id2","id3"] '
+#PUT     /v1/customers/:id/mergeLeft/:id1,:id2,:id3,:id4
+#PUT     /v1/customers/:id/mergeRight/:id
+
