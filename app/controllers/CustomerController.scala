@@ -18,8 +18,8 @@ class CustomerController @Inject()(dao: CustomerDAO ) extends Controller {
   def save() = Action.async(parse.json) {
     request =>
       request.body.validate[Customer] match {
-        case JsSuccess(s) => Future.successful(Ok)
-        case JsError(e) => Future.successful(BadRequest("Bad Json Input"))
+        case s: JsSuccess[Customer] => Future.successful(Ok)
+        case e: JsError => Future.successful(BadRequest("Bad Json Input"))
       }
   }
   def get(id:String) = Action {
