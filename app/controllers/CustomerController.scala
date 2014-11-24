@@ -23,7 +23,7 @@ import play.api.libs.json.Json
  *
  */
 @Singleton
-@Api(value = "/api/v1/customers", description = "Customer Api",basePath = "https://restfulplay.herokuapp.com/")
+@Api(value = "/api/v1/customers", description = "Customer Api",basePath = "https://restfulplay.herokuapp.com")
 class CustomerController @Inject()(manager: CustomerResourceManager) extends Controller {
 
   /**

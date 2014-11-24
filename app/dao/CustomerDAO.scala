@@ -37,13 +37,6 @@ class CustomerDAO extends BaseDAO[Customer,String]{
 
 
   def findDuplicates() = {
-     //TODO: query to find duplicates.
-     //What defines a 'duplicate' ?
-
-    //email non-unique?
-    // first+lastname duplicates
-    // phone duplicates?
-
 
   }
 
