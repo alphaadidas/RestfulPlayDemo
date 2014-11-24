@@ -23,7 +23,7 @@ import play.api.libs.json.Json
  *
  */
 @Singleton
-@Api(value = "/api/v1/customers", description = "Customer Api" , basePath = "http://localhost:9000/")
+@Api(value = "/api/v1/customers", description = "Customer Api")
 class CustomerController @Inject()(manager: CustomerResourceManager) extends Controller {
 
   /**
