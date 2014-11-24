@@ -1,18 +1,35 @@
 package dao
 
+
+import play.api.Play.current
+import play.modules.reactivemongo.ReactiveMongoPlugin
+import play.modules.reactivemongo.json.collection.JSONCollection
+import reactivemongo.core.commands.LastError
+import scala.concurrent.Future
+
 /**
+ * Basic CRUD DAO.
+ *
  * @author gmatsu
  *
  *
  */
 trait BaseDAO[T,K] {
 
-//  def dao
+  val collectionName = ""
 
-  def save(doc:T)
+  def db = ReactiveMongoPlugin.db
 
-  def update(doc:T)
+  def collection: JSONCollection = db.collection[JSONCollection](collectionName)
 
-  def delete(id: K)
+  def save(model: T): Future[LastError]
+
+  def update(doc: T): Future[LastError]
+
+  def delete(id: K): Future[LastError]
+
+  def findById(id: K): Future[Option[T]]
+
+  def findByQuery(params: Map[String,String]): Future[List[T]]
 
 }
