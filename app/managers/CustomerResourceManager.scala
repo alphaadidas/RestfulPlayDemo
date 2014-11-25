@@ -33,11 +33,19 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
    *
    * @param doc
    */
-  def save(doc: CustomerResource) = {
-    dao.save(CustomerMapping.fromResource(doc)).map {
-      lastError =>
-        Logger.debug("new customer saved")
-    }
+  def save(doc: CustomerResource): Try[Option[CustomerResource]] = {
+    val customer = CustomerMapping.fromResource(doc)
+    val id = customer.id
+      Await.result(
+        dao.save(customer).map {
+          lastError =>
+            Logger.debug("new customer saved")
+            if(!lastError.ok){
+              throw new ResourceException
+            } else {
+              findById(id.get.stringify)
+            }
+        }, DAO_TIMEOUT)
   }
 
   /**
@@ -46,8 +54,25 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
    * @param doc
    * @return
    */
-  def update(id:String, doc: CustomerResource): Either[Option[CustomerResource],Option[ResourceException]] = {
+  def partialUpdate(id:String, doc: CustomerResource): Either[Option[CustomerResource],Option[ResourceException]] = {
+
     findById(id) match {
+      case Success(s) => s match {
+        case Some(cust) =>  Left(Option(cust))
+        case None => Right(Option(new ResourceNotFoundException))
+      }
+      case Failure(f) => Right(Option(new ResourceException))
+    }
+  }
+
+  /**
+   *
+   * @param doc
+   * @return
+   */
+  def update(doc: CustomerResource): Either[Option[CustomerResource],Option[ResourceException]] = {
+
+    findById(doc.id.get) match {
       case Success(s) => s match {
         case Some(cust) =>  Left(Option(cust))
         case None => Right(Option(new ResourceNotFoundException))
@@ -60,10 +85,15 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
    *
    * @param id
    */
-  def delete(id: String) = {
-    dao.delete(id).map{
+  def delete(id: String): Try[Boolean] = {
+    Try(
+      Await.result(
+    dao.delete(id).map {
       lastError =>
-    }
+        if(lastError.ok && lastError.updatedExisting) true
+        else if (lastError.ok && !lastError.updatedExisting) throw new ResourceNotFoundException
+        else false
+    },DAO_TIMEOUT))
   }
 
   /**
@@ -85,11 +115,11 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
    */
   def findByQuery(query:Map[String,String]): Try[Option[CustomerResourceList]] = {
     Try(
-    Await.result(
-    dao.findByQuery(query).flatMap{
-      case results@List(doc) => Future(Option(CustomerMapping.toResourceListFromModel(results)))
-      case _ => Future(None)
-    }, DAO_TIMEOUT)
+      Await.result(
+        dao.findByQuery(query).flatMap{
+          case results@List(doc) => Future(Option(CustomerMapping.toResourceListFromModel(results)))
+          case _ => Future(None)
+        }, DAO_TIMEOUT)
     )
   }
 
@@ -119,7 +149,7 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
     }
 
     if(newTarget.isDefined){
-      update(newTarget.get.id,newTarget.get).fold(
+      update(newTarget.get).fold(
         (success) => {
           Left(success)
         },

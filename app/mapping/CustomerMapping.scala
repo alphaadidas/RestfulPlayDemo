@@ -5,7 +5,7 @@ import model.Customer
 import reactivemongo.bson.BSONObjectID
 
 /**
- * @author: gmatsu
+ * @author gmatsu
  *
  *
  */
@@ -21,7 +21,12 @@ object CustomerMapping {
   }
 
   def fromModel(model : Customer): CustomerResource = {
-    CustomerResource(model.id.toString)
+    CustomerResource(Option(model.id.get.stringify),
+      emailAddress = model.emailAddress,
+      firstName = model.firstName,
+      lastName = model.lastName,
+      phone = model.phone
+    )
   }
 
 

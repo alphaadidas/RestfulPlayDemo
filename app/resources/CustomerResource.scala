@@ -7,7 +7,7 @@ import play.api.libs.json.Json
  *
  *
  */
-case class CustomerResource(id: String,
+case class CustomerResource(id: Option[String] = None,
                             emailAddress: Option[String] = None,
                             firstName: Option[String] = None,
                             lastName: Option[String] = None,

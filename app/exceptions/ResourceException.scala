@@ -27,3 +27,8 @@ class ResourcePreconditionException extends  ResourceException{
   override val statusCode = 412
 }
 
+class ResourceNotModifiedException extends  ResourceException{
+  override val statusCode = 304
+}
+
+

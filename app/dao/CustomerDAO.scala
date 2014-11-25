@@ -4,7 +4,7 @@ import scala.concurrent.ExecutionContext
 import ExecutionContext.Implicits.global
 
 import model.Customer
-import reactivemongo.bson.BSONDocument
+import reactivemongo.bson.{BSONObjectID, BSONDocument}
 import scala.concurrent.Future
 import play.modules.reactivemongo.json.BSONFormats._
 import com.google.inject.Singleton
@@ -31,9 +31,9 @@ class CustomerDAO extends BaseDAO[Customer,String]{
   //TODO: change to : fetch.. merge, update, increment version
   override def update(doc: Customer) = collection.update(BSONDocument("id" -> doc.id), doc, upsert = true)
 
-  override def delete(id: String) = collection.remove(BSONDocument("id" -> id))
+  override def delete(id: String) = collection.remove(BSONDocument("id" -> BSONObjectID(id)))
 
-  override def findById(id: String): Future[Option[Customer]] = collection.find(BSONDocument("id" -> id)).cursor[Customer].headOption
+  override def findById(id: String): Future[Option[Customer]] = collection.find(BSONDocument("id" -> BSONObjectID(id))).cursor[Customer].headOption
 
 
   def findDuplicates() = {

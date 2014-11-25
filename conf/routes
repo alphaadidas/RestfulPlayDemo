@@ -18,9 +18,9 @@ GET           /api/v1/customers                   @controllers.CustomerControlle
 #NOTE: keep this route above the /:id.
 GET           /api/v1/customers/duplicates        @controllers.CustomerController.findDuplicates()
 
-
 GET           /api/v1/customers/:id               @controllers.CustomerController.get(id)
-PUT           /api/v1/customers/:id               @controllers.CustomerController.update(id)
+PUT           /api/v1/customers                   @controllers.CustomerController.update()
+PUT           /api/v1/customers/:id               @controllers.CustomerController.partialUpdate(id)
 DELETE        /api/v1/customers/:id               @controllers.CustomerController.delete(id)
 #GET         /v1/customers/:id/possibleDuplicates            @controllers.CustomerController.findDuplicates()
 
@@ -28,10 +28,6 @@ DELETE        /api/v1/customers/:id               @controllers.CustomerControlle
 PUT           /api//v1/customers/:id/merge        @controllers.CustomerController.merge(id)
 
 
-#PUT     /v1/customers/:id/merge/:id1,:id2,:id3,:id4
-#PUT     /v1/customers/:id/merge #-d ' ["id1","id2","id3"] '
-#PUT     /v1/customers/:id/mergeLeft/:id1,:id2,:id3,:id4
-#PUT     /v1/customers/:id/mergeRight/:id
 
 
 
