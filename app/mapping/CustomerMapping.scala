@@ -1,6 +1,6 @@
 package mapping
 
-import resources.CustomerResource
+import resources.{CustomerResourceList, CustomerResource}
 import model.Customer
 import reactivemongo.bson.BSONObjectID
 
@@ -25,4 +25,12 @@ object CustomerMapping {
   }
 
 
+  def toResourceListFromModel(models: List[Customer]): CustomerResourceList = {
+
+    CustomerResourceList("hi")
+  }
+
+  def toResourceListFromModel(models: List[Customer], total: Int) = {
+
+  }
 }

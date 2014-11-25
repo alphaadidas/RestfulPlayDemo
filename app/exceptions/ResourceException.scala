@@ -26,3 +26,4 @@ class ResourceConflictException extends  ResourceException{
 class ResourcePreconditionException extends  ResourceException{
   override val statusCode = 412
 }
+

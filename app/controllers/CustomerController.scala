@@ -23,7 +23,7 @@ import play.api.libs.json.Json
  *
  */
 @Singleton
-@Api(value = "/api/v1/customers", description = "Customer Api",basePath = "https://restfulplay.herokuapp.com")
+@Api(value = "/api/v1/customers", description = "Customer Api", basePath = "https://restfulplay.herokuapp.com")
 class CustomerController @Inject()(manager: CustomerResourceManager) extends Controller {
 
   /**
@@ -121,6 +121,11 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
       }.getOrElse(Future.successful(BadRequest("invalid json")))
   }
 
+  /**
+   *
+   * @param id
+   * @return
+   */
   @ApiOperation(
     nickname = "Delete Customer with Id",
     value = "Delete Customer with Id",
@@ -136,28 +141,63 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
     Ok
   }
 
+  /**
+   *
+   * @return
+   */
   @ApiOperation(
     nickname = "Search for Customers",
     value = "Search for Customers",
     notes = "Search for Customers",
-    response = classOf[resources.CustomerResource],
+    response = classOf[resources.CustomerResourceList],
     httpMethod = "GET")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Successfully updated"),
-    new ApiResponse(code = 404, message = "Customer Not found")
+    new ApiResponse(code = 200, message = "Customers found", response = classOf[resources.CustomerResourceList]),
+    new ApiResponse(code = 404, message = "Customers Not found")
   ))
   def find() = Action {
     request => {
-      val queryParams = request.queryString
-      manager.findByQuery(request.queryString.flatMap( kv => Map(kv._1 -> kv._2.head)))
-
-      Ok
+      manager.findByQuery(request.queryString.flatMap( kv => Map(kv._1 -> kv._2.head))) match {
+        case Success(s) => s match {
+          case Some(result) => Ok(Json.toJson(result))
+          case None => NotFound
+        }
+        case Failure(f) => BadRequest
+      }
     }
   }
 
-  def findDuplicates() = play.mvc.Results.TODO
+  /**
+   *
+   * @return
+   */
+  @ApiOperation(
+    nickname = "Search for Duplicate Customer Records",
+    value = "Search for Duplicate Customer Records",
+    notes = "Special Query to Search for Duplicate Customer Records",
+    response = classOf[resources.CustomerResourceList],
+    httpMethod = "GET")
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "Successfully updated", response = classOf[resources.CustomerResourceList]),
+    new ApiResponse(code = 404, message = "Customer Not found")
+  ))
+  def findDuplicates() = Action {
+    request => {
+      manager.findByQuery(request.queryString.flatMap( kv => Map(kv._1 -> kv._2.head))) match {
+        case Success(s) => s match {
+          case Some(result) => Ok(Json.toJson(result))
+          case None => NotFound
+        }
+        case Failure(f) => BadRequest
+      }
+    }
+  }
 
-
+  /**
+   *
+   * @param id
+   * @return
+   */
   @ApiOperation(
     nickname = "Merge Customer Resources",
     value = "Merge Customer Resources",
@@ -166,18 +206,16 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
     httpMethod = "PUT")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Successfully Merged"),
+    new ApiResponse(code = 304, message = "Nothing was merged"),
     new ApiResponse(code = 404, message = "Customer Not found")
   ))
   def merge(id: String) = Action {
     request => {
-      val ids = request.getQueryString("ids")
-
+      val ids = request.queryString.get("ids").get.toList
+      manager.collapseLeft(id,ids)
       Ok
     }
-
   }
-
-
 
 }
 

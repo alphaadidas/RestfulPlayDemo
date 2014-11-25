@@ -5,7 +5,7 @@ import ExecutionContext.Implicits.global
 
 import dao.CustomerDAO
 import com.google.inject.{Inject, Singleton}
-import resources.CustomerResource
+import resources.{CustomerResourceList, CustomerResource}
 import exceptions.{ResourceConflictException, ResourceNotFoundException, ResourceException}
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.{Future, Await}
@@ -27,6 +27,12 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
 
   val dao = customerDao
 
+  val DAO_TIMEOUT = 30.second
+
+  /**
+   *
+   * @param doc
+   */
   def save(doc: CustomerResource) = {
     dao.save(CustomerMapping.fromResource(doc)).map {
       lastError =>
@@ -34,6 +40,12 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
     }
   }
 
+  /**
+   *
+   * @param id
+   * @param doc
+   * @return
+   */
   def update(id:String, doc: CustomerResource): Either[Option[CustomerResource],Option[ResourceException]] = {
     findById(id) match {
       case Success(s) => s match {
@@ -44,23 +56,49 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
     }
   }
 
+  /**
+   *
+   * @param id
+   */
   def delete(id: String) = {
     dao.delete(id).map{
       lastError =>
     }
   }
 
+  /**
+   *
+   * @param id
+   * @return
+   */
   def findById(id: String): Try[Option[CustomerResource]] = {
     Try(Await.result(dao.findById(id).flatMap {
       case model@Some(doc) => Future(Option(CustomerMapping.fromModel(model.get)))
       case None => Future(None)
-    }, 30 second))
+    }, DAO_TIMEOUT))
   }
 
-  def findByQuery(query:Map[String,String]) = {
-    dao.findByQuery(query)
+  /**
+   *
+   * @param query
+   * @return
+   */
+  def findByQuery(query:Map[String,String]): Try[Option[CustomerResourceList]] = {
+    Try(
+    Await.result(
+    dao.findByQuery(query).flatMap{
+      case results@List(doc) => Future(Option(CustomerMapping.toResourceListFromModel(results)))
+      case _ => Future(None)
+    }, DAO_TIMEOUT)
+    )
   }
 
+  /**
+   *
+   * @param targetId
+   * @param sourceId
+   * @return
+   */
   def mergeLeft(targetId: String, sourceId: String): Either[Option[CustomerResource],Option[ResourceException]] = {
     if(targetId == sourceId) Right(Option(new ResourceConflictException))
 
@@ -96,6 +134,14 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
 
   }
 
+  /**
+   *
+   * @param targetId
+   * @param sourceIds
+   */
+  def collapseLeft(targetId: String, sourceIds: List[String]) = {
+
+  }
 
 
 }
