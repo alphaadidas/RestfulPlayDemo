@@ -87,8 +87,13 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
         case None => NotFound
       }
       case Failure(f) => {
-        Logger.error(s"failure : ${f.getMessage}")
-        InternalServerError
+        f match {
+          case e :IllegalArgumentException => NotFound
+          case _ => {
+            Logger.error(s"failure : ${f.getMessage}")
+            InternalServerError
+          }
+        }
       }
     }
   }
