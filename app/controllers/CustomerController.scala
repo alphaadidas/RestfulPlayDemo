@@ -1,5 +1,8 @@
 package controllers
 
+import scala.concurrent.ExecutionContext
+import ExecutionContext.Implicits.global
+
 import scala.Some
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -217,6 +220,9 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
     new ApiResponse(code = 200, message = "Customers found", response = classOf[resources.CustomerResourceList]),
     new ApiResponse(code = 404, message = "Customers Not found")
   ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(value = "emailAddress", required = false, dataType = "emailAddress", paramType = "query")
+  ))
   def find() = Action {
     request => {
       manager.findByQuery(request.queryString.flatMap( kv => Map(kv._1 -> kv._2.head))) match {
@@ -237,22 +243,14 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
     nickname = "Search for Duplicate Customer Records",
     value = "Search for Duplicate Customer Records",
     notes = "Special Query to Search for Duplicate Customer Records",
-    response = classOf[resources.CustomerResourceList],
+    response = classOf[resources.DuplicateCustomerResourceList],
     httpMethod = "GET")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Successfully updated", response = classOf[resources.CustomerResourceList]),
+    new ApiResponse(code = 200, message = "Successfully updated", response = classOf[resources.DuplicateCustomerResourceList]),
     new ApiResponse(code = 404, message = "Customer Not found")
   ))
-  def findDuplicates() = Action {
-    request => {
-      manager.findByQuery(request.queryString.flatMap( kv => Map(kv._1 -> kv._2.head))) match {
-        case Success(s) => s match {
-          case Some(result) => Ok(Json.toJson(result))
-          case None => NotFound
-        }
-        case Failure(f) => BadRequest
-      }
-    }
+  def findDuplicates() = Action.async {
+      manager.findDuplicates().map( i=> Ok(Json.toJson(i)))
   }
 
   /**

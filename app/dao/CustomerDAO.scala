@@ -1,15 +1,16 @@
 package dao
 
-import scala.concurrent.ExecutionContext
+import scala.Some
+import scala.concurrent.{ExecutionContext, Future}
+
 import ExecutionContext.Implicits.global
-
-import model.Customer
-import reactivemongo.bson.{BSONObjectID, BSONDocument}
-import scala.concurrent.Future
-import play.modules.reactivemongo.json.BSONFormats._
 import com.google.inject.Singleton
+import model.{Customer, DuplicateEmailCount}
 import play.api.Logger
-
+import play.api.libs.json.Json
+import play.modules.reactivemongo.json.BSONFormats._
+import reactivemongo.bson._
+import reactivemongo.core.commands.{Aggregate, GroupField, Match, SumValue}
 
 /**
  * @author gmatsu
@@ -19,6 +20,7 @@ import play.api.Logger
 class CustomerDAO extends BaseDAO[Customer,String]{
 
   override val collectionName = "customers"
+  val MAX_RESULT_SIZE = 100
 
   override def save(doc: Customer) = {
     val docToSave = doc.version match {
@@ -33,28 +35,35 @@ class CustomerDAO extends BaseDAO[Customer,String]{
 
   override def delete(id: String) = collection.remove(BSONDocument("id" -> BSONObjectID(id)))
 
-  override def findById(id: String): Future[Option[Customer]] = collection.find(BSONDocument("id" -> BSONObjectID(id))).cursor[Customer].headOption
+  override def findById(id: String): Future[Option[Customer]] = collection.find(BSONDocument("id" -> BSONObjectID(id))).one[Customer]
 
+  /**
+   * Use aggregation in mongo to find duplicate emailAddress customers.
+   * @return
+   */
+  def findDuplicates(): Future[List[DuplicateEmailCount]] = {
+    val command = Aggregate(collection.name, Seq(
+      GroupField("emailAddress")("total" -> SumValue(1)),
+      Match(BSONDocument("total" -> BSONDocument("$gt" -> 1)))
+    ))
 
-  def findDuplicates() = {
-
+    collection.db.command(command) map { result =>
+      result.toList map (Json.toJson(_).as[DuplicateEmailCount](DuplicateEmailCount.duplicateEmailCountRead))
+    }
   }
 
   override def findByQuery(params: Map[String, String]): Future[List[Customer]] = {
     //TODO: filter out invalid params.
+    Logger.debug(s"Find by Query with params : ${params.toString()}")
 
-    Logger.debug("Fi"+params)
     val docs = params.flatMap( pair => {
         Logger.debug(pair._1)
-        List(BSONDocument(pair._1 -> pair._2))
+        List(pair._1 -> BSONString(pair._2))
       }
     )
-    Logger.debug(docs.toString())
-//    val results = collection.find(docs)
- //   Logger.debug(""+results)
-    //val cursor= .cursor[Customer]
-    //cursor.collect[List]()
-    null
+    val results = collection.find(BSONDocument(docs.toTraversable))
+    val cursor= results.cursor[Customer]
+    cursor.collect[List](MAX_RESULT_SIZE)
   }
 
 }

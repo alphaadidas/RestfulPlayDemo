@@ -15,17 +15,42 @@ case class CustomerResource(id: Option[String] = None,
                             ) extends BaseResource {
 }
 
-//id: Option[BSONObjectID] = Option(BSONObjectID.generate),
-
 object CustomerResource {
   implicit val jsonFormat = Json.format[CustomerResource]
 }
 
 
-case class CustomerResourceList(test:String) extends ResourceListResponse[CustomerResource]{
+case class CustomerResourceList(override  val results: List[CustomerResource],
+                                 override val resultCount: Int,
+                                 override val hasMore: Boolean = false,
+                                 override val nextPageToken: Option[String] = None
+                                 ) extends ResourceListResponse[CustomerResource]{
+  override def resourceName = "CustomerResource"
+  //TODO: add support for "Token-Based Result Cursor Paging"
 
 }
 
 object CustomerResourceList {
   implicit val jsonFormat = Json.format[CustomerResourceList]
+}
+
+
+case class DuplicateCustomerResource(emailAddress: String, duplicates : List[CustomerResource]) extends BaseResource
+//, _links: Hyp )
+
+object DuplicateCustomerResource {
+  implicit val jsonFormat = Json.format[DuplicateCustomerResource]
+}
+
+case class DuplicateCustomerResourceList(override  val results: List[DuplicateCustomerResource],
+                                         override val resultCount: Int,
+                                         override val hasMore: Boolean = false,
+                                         override val nextPageToken: Option[String] = None
+                                         ) extends ResourceListResponse[DuplicateCustomerResource]{
+
+  override def resourceName: String = "DuplicateCustomer"
+}
+
+object DuplicateCustomerResourceList {
+  implicit val jsonFormat = Json.format[DuplicateCustomerResourceList]
 }

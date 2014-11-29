@@ -7,4 +7,10 @@ package resources
  */
 trait BaseResource {
 
+  //TODO: require HATEOS Links
+  //def _links
 }
+
+
+
+

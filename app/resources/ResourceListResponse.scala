@@ -7,12 +7,12 @@ package resources
  */
 trait ResourceListResponse[ObjectType <: BaseResource] {
 
-  val resourceName = "Resource"
-  val resultCount = 0
-  val results: List[ObjectType] = List.empty[ObjectType]
+  def resourceName:String
+  def resultCount:Int
+  def results: List[ObjectType] = List.empty[ObjectType]
 
-//TODO: add support for "Token-Based Result Cursor Paging"
-//  val nextPageToken = ""
-//  val hasMore = true
+  //TODO: add support for "Token-Based Result Cursor Paging"
+  def nextPageToken:Option[String]
+  def hasMore:Boolean
 
 }

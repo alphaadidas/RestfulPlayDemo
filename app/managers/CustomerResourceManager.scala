@@ -1,18 +1,18 @@
 package managers
 
-import scala.concurrent.ExecutionContext
-import ExecutionContext.Implicits.global
-
-import dao.CustomerDAO
-import com.google.inject.{Inject, Singleton}
-import resources.{CustomerResourceList, CustomerResource}
-import exceptions.{ResourceConflictException, ResourceNotFoundException, ResourceException}
-import scala.util.{Failure, Success, Try}
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
-import mapping.CustomerMapping
-import play.api.Logger
+import scala.util.{Failure, Success, Try}
 
+import ExecutionContext.Implicits.global
+import com.google.inject.{Inject, Singleton}
+import dao.CustomerDAO
+import exceptions.{ResourceConflictException, ResourceException, ResourceNotFoundException}
+import mapping.CustomerMapping
+import model.DuplicateEmailCount
+import play.api.Logger
+import resources.{DuplicateCustomerResourceList, DuplicateCustomerResource, CustomerResource, CustomerResourceList}
+import scala.collection.mutable
 
 /**
  * Layer to Manage/Orchestrate the logic/business-process around a Rest Resource.
@@ -36,16 +36,16 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
   def save(doc: CustomerResource): Try[Option[CustomerResource]] = {
     val customer = CustomerMapping.fromResource(doc)
     val id = customer.id
-      Await.result(
-        dao.save(customer).map {
-          lastError =>
-            Logger.debug("new customer saved")
-            if(!lastError.ok){
-              throw new ResourceException
-            } else {
-              findById(id.get.stringify)
-            }
-        }, DAO_TIMEOUT)
+    Await.result(
+      dao.save(customer).map {
+        lastError =>
+          Logger.debug("new customer saved")
+          if(!lastError.ok){
+            throw new ResourceException
+          } else {
+            findById(id.get.stringify)
+          }
+      }, DAO_TIMEOUT)
   }
 
   /**
@@ -87,13 +87,12 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
    */
   def delete(id: String): Try[Boolean] = {
     Try(
-      Await.result(
-    dao.delete(id).map {
-      lastError =>
-        if(lastError.ok && lastError.updatedExisting) true
-        else if (lastError.ok && !lastError.updatedExisting) throw new ResourceNotFoundException
-        else false
-    },DAO_TIMEOUT))
+      Await.result(dao.delete(id).map {
+        lastError =>
+          if(lastError.ok && lastError.updatedExisting) true
+          else if (lastError.ok && !lastError.updatedExisting) throw new ResourceNotFoundException
+          else false
+      },DAO_TIMEOUT))
   }
 
   /**
@@ -117,11 +116,28 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
     Try(
       Await.result(
         dao.findByQuery(query).flatMap{
-          case results@List(doc) => Future(Option(CustomerMapping.toResourceListFromModel(results)))
+          case results => Future(Option(CustomerMapping.toResourceListResponseFromModel(results)))
           case _ => Future(None)
         }, DAO_TIMEOUT)
     )
   }
+
+  def findDuplicates():Future[DuplicateCustomerResourceList] = {
+    //TODO: fix this for scala async style.
+
+    val duplicates = Await.result(dao.findDuplicates(),DAO_TIMEOUT)
+
+    var duplicateResource: mutable.MutableList[DuplicateCustomerResource] =  mutable.MutableList()
+
+    duplicates.foreach ( dup => {
+      val models = Await.result(dao.findByQuery(Map("emailAddress" -> dup.emailAddress)),DAO_TIMEOUT)
+      val resource = CustomerMapping.toResourceListFromModel(models)
+      duplicateResource+= DuplicateCustomerResource(dup.emailAddress, resource)
+    })
+
+    Future(DuplicateCustomerResourceList(duplicateResource.toList,duplicates.size))
+  }
+
 
   /**
    *
@@ -171,7 +187,16 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
    */
   def collapseLeft(targetId: String, sourceIds: List[String]) = {
 
+
+    //
+    // if rights ..emtpy return left
+    // return collapes(head, tail)
+    //
+    //
+
+
   }
+
 
 
 }

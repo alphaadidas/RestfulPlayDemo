@@ -2,7 +2,8 @@ package mapping
 
 import resources.{CustomerResourceList, CustomerResource}
 import model.Customer
-import reactivemongo.bson.BSONObjectID
+
+import play.api.Logger
 
 /**
  * @author gmatsu
@@ -29,13 +30,21 @@ object CustomerMapping {
     )
   }
 
-
-  def toResourceListFromModel(models: List[Customer]): CustomerResourceList = {
-
-    CustomerResourceList("hi")
+  def toResourceListFromModel(models: List[Customer]): List[CustomerResource] = {
+    models.flatMap( model => List(fromModel(model)))
   }
 
   def toResourceListFromModel(models: List[Customer], total: Int) = {
 
+  }
+
+  def toResourceListResponse(resources:List[CustomerResource],totalCount:Int) = {
+    CustomerResourceList(resources,resources.size)
+  }
+
+  def toResourceListResponseFromModel(models: List[Customer]): CustomerResourceList ={
+    Logger.debug(s"model count: ${models.size}")
+    val resources = toResourceListFromModel(models)
+    toResourceListResponse(resources,resources.size)
   }
 }

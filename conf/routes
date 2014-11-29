@@ -2,7 +2,6 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-# Home page
 GET           /                                   @controllers.Application.index
 
 GET           /api-docs                           controllers.ApiHelpController.getResources
@@ -16,7 +15,7 @@ POST          /api/v1/customers                   @controllers.CustomerControlle
 GET           /api/v1/customers                   @controllers.CustomerController.find()
 
 #NOTE: keep this route above the /:id.
-GET           /api/v1/customers/duplicates        @controllers.CustomerController.findDuplicates()
+GET           /api/v1/customers/find/duplicates        @controllers.CustomerController.findDuplicates()
 
 GET           /api/v1/customers/:id               @controllers.CustomerController.get(id)
 PUT           /api/v1/customers                   @controllers.CustomerController.update()
@@ -29,8 +28,8 @@ PUT           /api//v1/customers/:id/merge        @controllers.CustomerControlle
 
 
 
-
-
+# status check..
+# GET         /api/status
 
 
 
