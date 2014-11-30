@@ -4,6 +4,7 @@ import resources.{CustomerResourceList, CustomerResource}
 import model.Customer
 
 import play.api.Logger
+import reactivemongo.bson.BSONObjectID
 
 /**
  * @author gmatsu
@@ -12,9 +13,29 @@ import play.api.Logger
  */
 object CustomerMapping {
 
-
+  /**
+   * for new Customer Objects
+   * @param resource
+   * @return
+   */
   def fromResource(resource : CustomerResource): Customer = {
     Customer( emailAddress = resource.emailAddress,
+      firstName =  resource.firstName,
+      lastName = resource.lastName,
+      phone = resource.phone,
+      version = Option(1L))
+  }
+
+  /**
+   * From existing Customer objects
+   *
+   * @param resource
+   * @return
+   */
+  def toModel(resource : CustomerResource): Customer = {
+    Customer(
+      id = Option(BSONObjectID(resource.id.get)),
+      emailAddress = resource.emailAddress,
       firstName =  resource.firstName,
       lastName = resource.lastName,
       phone = resource.phone,

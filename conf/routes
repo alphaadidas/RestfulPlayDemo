@@ -2,29 +2,30 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-GET           /                                   @controllers.Application.index
+GET           /                                        @controllers.Application.index
 
-GET           /api-docs                           controllers.ApiHelpController.getResources
-GET           /api-docs/api/v1/customers          controllers.ApiHelpController.getResource(path="/api/v1/customers")
-
-
-GET           /assets/*file                       controllers.Assets.at(path="/public", file)
+GET           /api-docs                                controllers.ApiHelpController.getResources
+GET           /api-docs/api/v1/customers               controllers.ApiHelpController.getResource(path="/api/v1/customers")
 
 
-POST          /api/v1/customers                   @controllers.CustomerController.save()
-GET           /api/v1/customers                   @controllers.CustomerController.find()
+GET           /assets/*file                            controllers.Assets.at(path="/public", file)
+
+
+POST          /api/v1/customers                        @controllers.CustomerController.save()
+GET           /api/v1/customers                        @controllers.CustomerController.find()
 
 #NOTE: keep this route above the /:id.
 GET           /api/v1/customers/find/duplicates        @controllers.CustomerController.findDuplicates()
 
-GET           /api/v1/customers/:id               @controllers.CustomerController.get(id)
-PUT           /api/v1/customers                   @controllers.CustomerController.update()
-PUT           /api/v1/customers/:id               @controllers.CustomerController.partialUpdate(id)
-DELETE        /api/v1/customers/:id               @controllers.CustomerController.delete(id)
+GET           /api/v1/customers/:id                    @controllers.CustomerController.get(id)
+PUT           /api/v1/customers                        @controllers.CustomerController.update()
+PUT           /api/v1/customers/:id                    @controllers.CustomerController.partialUpdate(id)
+DELETE        /api/v1/customers/:id                    @controllers.CustomerController.delete(id)
 #GET         /v1/customers/:id/possibleDuplicates            @controllers.CustomerController.findDuplicates()
 
 #  .... etag?  if-match for :id ?   .. 400, 409 , 404 , 401, 403, 406?
-PUT           /api//v1/customers/:id/merge        @controllers.CustomerController.merge(id)
+PUT           /api/v1/customers/:id/merge              @controllers.CustomerController.merge(id)
+
 
 
 

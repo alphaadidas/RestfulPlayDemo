@@ -1,11 +1,9 @@
 package controllers
 
-import scala.concurrent.ExecutionContext
-import ExecutionContext.Implicits.global
-
 import scala.Some
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
+import ExecutionContext.Implicits.global
 
 import com.google.inject.{Inject, Singleton}
 import com.wordnik.swagger.annotations._
@@ -27,7 +25,7 @@ import resources.CustomerResource
  *
  */
 @Singleton
-@Api(value = "/api/v1/customers", description = "Customer Api", basePath = "https://restfulplay.herokuapp.com")
+@Api(value = "/api/v1/customers", description = "Customer Api")
 class CustomerController @Inject()(manager: CustomerResourceManager) extends Controller {
 
   /**
@@ -78,9 +76,6 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
     new ApiResponse(code = 200, message = "Gets cutomer by Id", response = classOf[resources.CustomerResource] ),
     new ApiResponse(code = 404, message = "Customer Not found")))
   def get(@ApiParam(value = "Customer Id", required = true, allowMultiple = false) @PathParam("id") id: String) = Action {
-
-    Logger.debug("Getting Customer by id")
-
     manager.findById(id) match {
       case Success(s) => s match {
         case Some(doc) => Ok(Json.toJson(doc))
@@ -117,6 +112,8 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
     new ApiResponse(code = 409, message = "Update is in conflict with existing record"),
     new ApiResponse(code = 412, message = "PreCondition failed")
   ))
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(value = "Customer object to be updated completely", required = true, dataType = "CustomerResource", paramType = "body")))
   def update() = Action.async(parse.json) {
     request =>
       request.body.validate[CustomerResource].map {
@@ -158,7 +155,9 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
     new ApiResponse(code = 409, message = "Update is in conflict with existing record"),
     new ApiResponse(code = 412, message = "PreCondition failed")
   ))
-  def partialUpdate(id: String) = Action.async(parse.json) {
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(value = "Customer object to be partially updated", required = true, dataType = "CustomerResource", paramType = "body")))
+  def partialUpdate(@ApiParam(value = "Customer Id", required = true) @PathParam("id") id: String) = Action.async(parse.json) {
     request =>
       request.body.validate[CustomerResource].map {
         customer => {
@@ -251,11 +250,16 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
     response = classOf[resources.DuplicateCustomerResourceList],
     httpMethod = "GET")
   @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Successfully updated", response = classOf[resources.DuplicateCustomerResourceList]),
-    new ApiResponse(code = 404, message = "Customer Not found")
+    new ApiResponse(code = 200, message = "Successfully Found Duplicates", response = classOf[resources.DuplicateCustomerResourceList]),
+    new ApiResponse(code = 404, message = "No Customer Duplicates found")
   ))
   def findDuplicates() = Action.async {
-      manager.findDuplicates().map( i=> Ok(Json.toJson(i)))
+    manager.findDuplicates() match {
+      case Success(s) => s match {
+        case Some(result) => Future.successful(Ok(Json.toJson(s.get)))
+      }
+      case Failure(f) => Future.successful(BadRequest)
+    }
   }
 
   /**
@@ -266,7 +270,7 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
   @ApiOperation(
     nickname = "Merge Customer Resources",
     value = "Merge Customer Resources",
-    notes = "Merge Customer Resources",
+    notes = "Merge Customer Resources, The list of Id's will be merged/collapsed into the target Id",
     response = classOf[resources.CustomerResource],
     httpMethod = "PUT")
   @ApiResponses(Array(
@@ -274,11 +278,15 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
     new ApiResponse(code = 304, message = "Nothing was merged"),
     new ApiResponse(code = 404, message = "Customer Not found")
   ))
-  def merge(id: String) = Action {
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(value = "ids", required = false, dataType = "ids", paramType = "query")
+  ))
+  def merge(@ApiParam(value = "Target Customer Id", required = true, allowMultiple = false) @PathParam("id") id: String) = Action.async(parse.empty) {
     request => {
       val ids = request.queryString.get("ids").get.toList
-      manager.collapseLeft(id,ids)
-      Ok
+      manager.collapseLeft(id,ids) map { results =>
+        Ok
+      }
     }
   }
 

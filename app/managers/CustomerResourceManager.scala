@@ -9,10 +9,12 @@ import com.google.inject.{Inject, Singleton}
 import dao.CustomerDAO
 import exceptions.{ResourceConflictException, ResourceException, ResourceNotFoundException}
 import mapping.CustomerMapping
-import model.DuplicateEmailCount
+import model.{Customer, DuplicateEmailCount}
 import play.api.Logger
 import resources.{DuplicateCustomerResourceList, DuplicateCustomerResource, CustomerResource, CustomerResourceList}
 import scala.collection.mutable
+import scala.annotation.tailrec
+import scala.collection.generic.CanBuildFrom
 
 /**
  * Layer to Manage/Orchestrate the logic/business-process around a Rest Resource.
@@ -55,10 +57,17 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
    * @return
    */
   def partialUpdate(id:String, doc: CustomerResource): Either[Option[CustomerResource],Option[ResourceException]] = {
-
+    Logger.debug("Partial Update")
     findById(id) match {
       case Success(s) => s match {
-        case Some(cust) =>  Left(Option(cust))
+        case Some(cust) => update(cloneLeft(doc,s.get)).fold(
+          (success)=>{
+            Left(success)
+          },
+          (error) =>{
+            Right(error)
+          }
+        )
         case None => Right(Option(new ResourceNotFoundException))
       }
       case Failure(f) => Right(Option(new ResourceException))
@@ -71,10 +80,15 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
    * @return
    */
   def update(doc: CustomerResource): Either[Option[CustomerResource],Option[ResourceException]] = {
-
     findById(doc.id.get) match {
       case Success(s) => s match {
-        case Some(cust) =>  Left(Option(cust))
+        case Some(cust) => {
+          Await.result(dao.update(CustomerMapping.toModel(doc)) map {
+            lastError =>
+              if (lastError.ok && lastError.updatedExisting) Left(Option(doc))
+              else Right(Option(new ResourceException))
+          }, DAO_TIMEOUT)
+        }
         case None => Right(Option(new ResourceNotFoundException))
       }
       case Failure(f) => Right(Option(new ResourceException))
@@ -88,10 +102,10 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
   def delete(id: String): Try[Boolean] = {
     Try(
       Await.result(dao.delete(id).map {
-        lastError =>
-          if(lastError.ok && lastError.updatedExisting) true
-          else if (lastError.ok && !lastError.updatedExisting) throw new ResourceNotFoundException
+        lastError => {
+          if (lastError.ok) true
           else false
+        }
       },DAO_TIMEOUT))
   }
 
@@ -122,20 +136,21 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
     )
   }
 
-  def findDuplicates():Future[DuplicateCustomerResourceList] = {
-    //TODO: fix this for scala async style.
+  def findDuplicates():Try[Option[DuplicateCustomerResourceList]] = {
+    Try {
+      //TODO: fix this for scala async style.
+      val duplicates = Await.result(dao.findDuplicates(), DAO_TIMEOUT)
 
-    val duplicates = Await.result(dao.findDuplicates(),DAO_TIMEOUT)
+      var duplicateResource: mutable.MutableList[DuplicateCustomerResource] = mutable.MutableList()
 
-    var duplicateResource: mutable.MutableList[DuplicateCustomerResource] =  mutable.MutableList()
+      duplicates.foreach(dup => {
+        val models = Await.result(dao.findByQuery(Map("emailAddress" -> dup.emailAddress)), DAO_TIMEOUT)
+        val resource = CustomerMapping.toResourceListFromModel(models)
+        duplicateResource += DuplicateCustomerResource(dup.emailAddress, resource)
+      })
 
-    duplicates.foreach ( dup => {
-      val models = Await.result(dao.findByQuery(Map("emailAddress" -> dup.emailAddress)),DAO_TIMEOUT)
-      val resource = CustomerMapping.toResourceListFromModel(models)
-      duplicateResource+= DuplicateCustomerResource(dup.emailAddress, resource)
-    })
-
-    Future(DuplicateCustomerResourceList(duplicateResource.toList,duplicates.size))
+      Option(DuplicateCustomerResourceList(duplicateResource.toList, duplicates.size))
+    }
   }
 
 
@@ -185,18 +200,60 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
    * @param targetId
    * @param sourceIds
    */
-  def collapseLeft(targetId: String, sourceIds: List[String]) = {
+  def collapseLeft(targetId: String, sourceIds: List[String]): Future[Either[Option[CustomerResource],Option[ResourceException]]] = {
+
+    val targetResource = CustomerMapping.fromModel(Await.result(dao.findById(targetId),DAO_TIMEOUT).get)
+    //val sources: mutable.MutableList[CustomerResource] =  mutable.MutableList()
 
 
-    //
-    // if rights ..emtpy return left
-    // return collapes(head, tail)
-    //
-    //
+    val mm = sourceIds.map { sourceId =>
+      dao.findById(sourceId) map { sourceResource =>
+        Logger.debug(s"<8><><><><>< ${sourceResource.toString}")
+         CustomerMapping.fromModel(sourceResource.get)
+      }
+    }
 
+    val invert = Future.traverse(mm)(x=> x)
+
+    invert.map { sources =>
+      val mergedResource = merge(targetResource,sources.toList)
+      update(mergedResource)fold(
+        (success) => {
+          Left(success)
+        },
+        (error) =>{
+          Right(Option(new ResourceException))
+        }
+        )
+
+    }
 
   }
 
+
+  @tailrec private def merge(target: CustomerResource, sources: List[CustomerResource]): CustomerResource = {
+    if (sources.isEmpty) target
+    else merge(copyLeft(target, sources.head), sources.tail)
+
+  }
+
+  def copyLeft(t: CustomerResource, s: CustomerResource) = {
+    t.copy( id = t.id,
+      emailAddress = if(t.emailAddress.isEmpty && s.emailAddress.isDefined) s.emailAddress else t.emailAddress,
+      firstName = if(t.firstName.isEmpty && s.firstName.isDefined) s.firstName else t.firstName,
+      lastName = if(t.lastName.isEmpty && s.lastName.isDefined) s.lastName else t.lastName,
+      phone = if(t.phone.isEmpty && s.phone.isDefined) s.phone else t.phone
+    )
+  }
+
+  def cloneLeft(t: CustomerResource, s: CustomerResource) = {
+    t.copy( id = s.id,
+      emailAddress = if(t.emailAddress.isEmpty && s.emailAddress.isDefined) s.emailAddress else t.emailAddress,
+      firstName = if(t.firstName.isEmpty && s.firstName.isDefined) s.firstName else t.firstName,
+      lastName = if(t.lastName.isEmpty && s.lastName.isDefined) s.lastName else t.lastName,
+      phone = if(t.phone.isEmpty && s.phone.isDefined) s.phone else t.phone
+    )
+  }
 
 
 }
