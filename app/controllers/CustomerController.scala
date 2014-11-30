@@ -283,7 +283,8 @@ class CustomerController @Inject()(manager: CustomerResourceManager) extends Con
   ))
   def merge(@ApiParam(value = "Target Customer Id", required = true, allowMultiple = false) @PathParam("id") id: String) = Action.async(parse.empty) {
     request => {
-      val ids = request.queryString.get("ids").get.toList
+
+      val ids = request.queryString.get("ids").get.head.split(",").map( _.trim).toList
       manager.collapseLeft(id,ids) map { results =>
         Ok
       }

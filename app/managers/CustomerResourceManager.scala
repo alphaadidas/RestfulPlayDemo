@@ -208,25 +208,26 @@ class CustomerResourceManager @Inject()(customerDao: CustomerDAO) extends Resour
 
     val mm = sourceIds.map { sourceId =>
       dao.findById(sourceId) map { sourceResource =>
-        Logger.debug(s"<8><><><><>< ${sourceResource.toString}")
-         CustomerMapping.fromModel(sourceResource.get)
+        CustomerMapping.fromModel(sourceResource.get)
       }
     }
 
     val invert = Future.traverse(mm)(x=> x)
 
-    invert.map { sources =>
-      val mergedResource = merge(targetResource,sources.toList)
-      update(mergedResource)fold(
+    invert.map { sources => {
+      val mergedResource = merge(targetResource, sources.toList)
+      update(mergedResource) fold(
         (success) => {
+          sources.map{ src =>
+            dao.delete(src.id.get)
+          }
           Left(success)
         },
-        (error) =>{
+        (error) => {
           Right(Option(new ResourceException))
         }
         )
-
-    }
+    }}
 
   }
 
